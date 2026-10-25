@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perencana Anggaran Bulanan</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* Transisi halus untuk semua elemen interaktif */
+    * { transition: background-color 0.2s, border-color 0.2s, color 0.2s; }
+    /* Scrollbar tipis agar tidak memakan ruang */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+    /* Pastikan canvas chart responsif */
+    canvas { max-width: 100%; }
+
+    /* ── Wishlist: kartu target ── */
+    .wishlist-kartu {
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      background: #ffffff;
+    }
+    .wishlist-kartu.tercapai {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+    /* Progress bar fill */
+    .wb-fill { height: 100%; border-radius: 9999px; transition: width 0.4s ease; }
+    .wb-green  { background-color: #22c55e; }
+    .wb-yellow { background-color: #eab308; }
+    .wb-blue   { background-color: #3b82f6; }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="bg-blue-700 text-white shadow-md">
+  <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-bold tracking-tight">💰 Perencana Anggaran Bulanan</h1>
+      <p class="text-blue-200 text-xs mt-0.5">Kelola keuangan, raih finansial sehat</p>
+    </div>
+    <!-- Tombol Reset -->
+    <button onclick="handleReset()"
+      class="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg font-medium">
+      🗑 Reset
+    </button>
+  </div>
+</header>
+
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
+<main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+  <!-- ── BAGIAN 1: PEMASUKAN & METODE ── -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+    <h2 class="text-base font-semibold text-blue-700 mb-4">📥 Pemasukan & Metode Pembagian</h2>
+
+    <!-- Input pemasukan -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-600 mb-1">Pemasukan Bulanan (Rp)</label>
+      <input id="inputPemasukan" type="text" inputmode="numeric" placeholder="Contoh: 5.000.000"
+        class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        oninput="formatInputRibuan(this)" />
+      <p id="errorPemasukan" class="text-red-500 text-xs mt-1 hidden"></p>
+    </div>
+
+    <!-- Pilihan metode -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-600 mb-2">Metode Pembagian</label>
+      <div class="flex gap-3">
+        <button id="btn503020" onclick="setMetode('503020')"
+          class="flex-1 py-2 rounded-xl text-sm font-medium border-2 border-blue-600 bg-blue-600 text-white">
+          50/30/20
+        </button>
+        <button id="btnCustom" onclick="setMetode('custom')"
+          class="flex-1 py-2 rounded-xl text-sm font-medium border-2 border-slate-300 text-slate-600 hover:border-blue-400">
+          Kustom
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel persentase kustom (tersembunyi jika metode 50/30/20) -->
+    <div id="panelCustom" class="hidden mb-4 bg-blue-50 rounded-xl p-4 space-y-3">
+      <p class="text-xs text-slate-500 mb-2">Total harus tepat <strong>100%</strong></p>
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">% Kebutuhan</label>
+          <input id="pctKebutuhan" type="number" min="0" max="100" placeholder="50"
+            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            oninput="validatePersentase()" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">% Keinginan</label>
+          <input id="pctKeinginan" type="number" min="0" max="100" placeholder="30"
+            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            oninput="validatePersentase()" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">% Tabungan</label>
+          <input id="pctTabungan" type="number" min="0" max="100" placeholder="20"
+            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            oninput="validatePersentase()" />
+        </div>
+      </div>
+      <p id="errorPersentase" class="text-red-500 text-xs hidden"></p>
+    </div>
+
+    <!-- Tampilan alokasi anggaran per kelompok -->
+    <div id="ringkasanAlokasi" class="hidden grid grid-cols-3 gap-3 mt-2">
+      <div class="bg-blue-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-slate-500">Kebutuhan</p>
+        <p id="alokasiKebutuhan" class="text-base font-bold text-blue-700">Rp 0</p>
+        <p id="pctLabelKebutuhan" class="text-xs text-blue-400">50%</p>
+      </div>
+      <div class="bg-purple-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-slate-500">Keinginan</p>
+        <p id="alokasiKeinginan" class="text-base font-bold text-purple-700">Rp 0</p>
+        <p id="pctLabelKeinginan" class="text-xs text-purple-400">30%</p>
+      </div>
+      <div class="bg-green-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-slate-500">Tabungan</p>
+        <p id="alokasiTabungan" class="text-base font-bold text-green-700">Rp 0</p>
+        <p id="pctLabelTabungan" class="text-xs text-green-400">20%</p>
+      </div>
+    </div>
+
+    <button onclick="simpanPemasukan()"
+      class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl">
+      Simpan & Hitung Anggaran
+    </button>
+  </section>
+
+  <!-- ── BAGIAN 2: KATEGORI PENGELUARAN ── -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-blue-700">📋 Kategori Pengeluaran</h2>
+      <button onclick="bukaModalTambah()"
+        class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium">
+        + Tambah
+      </button>
+    </div>
+
+    <!-- Tabel kategori -->
+    <div id="tabelKategori" class="space-y-2">
+      <!-- Diisi oleh JavaScript -->
+    </div>
+    <p id="infoKosong" class="text-center text-slate-400 text-sm py-6">
+      Belum ada kategori. Klik "+ Tambah" untuk mulai.
+    </p>
+  </section>
+
+  <!-- ── BAGIAN 3: TARGET KEINGINAN (WISHLIST) ── -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+    <h2 class="text-base font-semibold text-blue-700 mb-4">🎯 Target Keinginan (Wishlist)</h2>
+
+    <!-- Form tambah target -->
+    <div class="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Nama Barang</label>
+          <input id="wNama" type="text" placeholder="Contoh: Sepatu"
+            class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Harga Target (Rp)</label>
+          <input id="wHarga" type="text" inputmode="numeric" placeholder="Contoh: 500.000"
+            class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            oninput="formatInputRibuan(this)" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Jangka Waktu (bulan)</label>
+          <input id="wBulan" type="number" min="1" placeholder="Contoh: 2"
+            class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Sudah Terkumpul (Rp) <span class="text-slate-400 font-normal">– opsional</span></label>
+          <input id="wTerkumpul" type="text" inputmode="numeric" placeholder="Contoh: 100.000"
+            class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            oninput="formatInputRibuan(this)" />
+        </div>
+      </div>
+      <p id="errorWishlist" class="text-red-500 text-xs mt-2 hidden"></p>
+      <button onclick="tambahWishlist()"
+        class="mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2 rounded-xl">
+        + Tambah Target
+      </button>
+    </div>
+
+    <!-- Daftar kartu target -->
+    <div id="daftarWishlist" class="space-y-3">
+      <!-- Diisi oleh JavaScript -->
+    </div>
+    <p id="infoWishlistKosong" class="text-center text-slate-400 text-sm py-4 hidden">
+      Belum ada target. Tambahkan target keinginanmu di atas.
+    </p>
+  </section>
+
+  <!-- ── BAGIAN 4: RINGKASAN & SISA UANG ── -->
+  <section id="seksiRingkasan" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+    <h2 class="text-base font-semibold text-blue-700 mb-4">📊 Ringkasan Bulan Ini</h2>
+
+    <!-- Kartu sisa uang -->
+    <div class="grid grid-cols-2 gap-3 mb-5">
+      <div class="bg-slate-50 rounded-xl p-4 text-center">
+        <p class="text-xs text-slate-500 mb-1">Sisa Uang</p>
+        <p id="sisaUang" class="text-lg font-bold text-blue-700">Rp 0</p>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-4 text-center">
+        <p class="text-xs text-slate-500 mb-1">Perkiraan / Hari</p>
+        <p id="sisaPerHari" class="text-lg font-bold text-blue-700">Rp 0</p>
+        <p id="infoHariTersisa" class="text-xs text-slate-400"></p>
+      </div>
+    </div>
+
+    <!-- Perbandingan per kelompok -->
+    <div id="kartuPerbandingan" class="space-y-3 mb-5">
+      <!-- Diisi oleh JavaScript -->
+    </div>
+  </section>
+
+  <!-- ── BAGIAN 4: GRAFIK ── -->
+  <section id="seksiGrafik" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+    <h2 class="text-base font-semibold text-blue-700 mb-4">📈 Grafik</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <p class="text-xs text-center text-slate-500 mb-2 font-medium">Pembagian Anggaran</p>
+        <div class="flex justify-center">
+          <canvas id="grafikPie" style="max-height:220px;max-width:220px;"></canvas>
+        </div>
+      </div>
+      <div>
+        <p class="text-xs text-center text-slate-500 mb-2 font-medium">Rencana vs Realisasi</p>
+        <canvas id="grafikBar" style="max-height:220px;"></canvas>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================================================
+     MODAL TAMBAH / EDIT KATEGORI
+     ============================================================ -->
+<div id="modal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+    <h3 id="judulModal" class="text-base font-semibold text-blue-700 mb-4">Tambah Kategori</h3>
+
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Nama Kategori</label>
+        <input id="modalNama" type="text" placeholder="Contoh: Makan Siang"
+          class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Kelompok</label>
+        <select id="modalKelompok"
+          class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <option value="kebutuhan">Kebutuhan</option>
+          <option value="keinginan">Keinginan</option>
+          <option value="tabungan">Tabungan</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Pengeluaran Nyata (Rp)</label>
+        <input id="modalPengeluaran" type="text" inputmode="numeric" placeholder="Contoh: 500.000"
+          class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          oninput="formatInputRibuan(this)" />
+      </div>
+
+      <p id="errorModal" class="text-red-500 text-xs hidden"></p>
+    </div>
+
+    <div class="flex gap-3 mt-5">
+      <button onclick="tutupModal()"
+        class="flex-1 py-2 rounded-xl text-sm font-medium border border-slate-300 text-slate-600 hover:bg-slate-50">
+        Batal
+      </button>
+      <button onclick="simpanKategori()"
+        class="flex-1 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white">
+        Simpan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL KONFIRMASI RESET
+     ============================================================ -->
+<div id="modalReset" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+    <div class="text-4xl mb-3">⚠️</div>
+    <h3 class="text-base font-semibold text-slate-800 mb-2">Reset Semua Data?</h3>
+    <p class="text-sm text-slate-500 mb-5">Semua data anggaran dan pengeluaran akan dihapus permanen.</p>
+    <div class="flex gap-3">
+      <button onclick="tutupModalReset()"
+        class="flex-1 py-2 rounded-xl text-sm font-medium border border-slate-300 text-slate-600 hover:bg-slate-50">
+        Batal
+      </button>
+      <button onclick="konfirmasiReset()"
+        class="flex-1 py-2 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-600 text-white">
+        Ya, Reset
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL TAMBAH TABUNGAN (WISHLIST)
+     ============================================================ -->
+<div id="modalTabungan" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+    <h3 class="text-base font-semibold text-blue-700 mb-1">💰 Tambah Tabungan</h3>
+    <p id="modalTabunganNama" class="text-xs text-slate-500 mb-4"></p>
+    <div>
+      <label class="block text-xs font-medium text-slate-500 mb-1">Jumlah Setoran (Rp)</label>
+      <input id="inputSetoran" type="text" inputmode="numeric" placeholder="Contoh: 100.000"
+        class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        oninput="formatInputRibuan(this)" />
+      <p id="errorSetoran" class="text-red-500 text-xs mt-1 hidden"></p>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button onclick="tutupModalTabungan()"
+        class="flex-1 py-2 rounded-xl text-sm font-medium border border-slate-300 text-slate-600 hover:bg-slate-50">
+        Batal
+      </button>
+      <button onclick="simpanSetoran()"
+        class="flex-1 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white">
+        Simpan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+// ─────────────────────────────────────────────
+// KONSTANTA & STATE GLOBAL
+// ─────────────────────────────────────────────
+const STORAGE_KEY = 'anggaranBulanan_v1';
+
+// State aplikasi yang akan disimpan ke localStorage
+let state = {
+  pemasukan: 0,           // Angka pemasukan bulanan
+  metode: '503020',       // '503020' atau 'custom'
+  persentase: { kebutuhan: 50, keinginan: 30, tabungan: 20 },
+  kategori: [],           // Array objek { id, nama, kelompok, pengeluaran }
+  wishlist: []            // Array objek { id, nama, harga, bulan, terkumpul }
+};
+
+// ID wishlist yang sedang dibuka modal setorannya
+let activeWishlistId = null;
+
+// Referensi instance Chart.js agar bisa diperbarui tanpa duplikat
+let chartPie = null;
+let chartBar = null;
+
+// ID yang sedang diedit (null = mode tambah baru)
+let editId = null;
+
+
+// ─────────────────────────────────────────────
+// UTILITAS FORMAT RUPIAH
+// ─────────────────────────────────────────────
+
+/** Mengubah angka menjadi string format Rupiah, mis: 2500000 → "Rp 2.500.000" */
+function formatRupiah(angka) {
+  return 'Rp ' + Math.round(angka).toLocaleString('id-ID');
+}
+
+/** Menghilangkan semua titik lalu mengubah string ke angka */
+function parseBersih(str) {
+  return parseInt(str.replace(/\./g, ''), 10) || 0;
+}
+
+/** Format otomatis titik ribuan pada elemen input saat diketik */
+function formatInputRibuan(el) {
+  const raw = el.value.replace(/\D/g, '');          // Hapus semua non-digit
+  el.value = raw ? parseInt(raw).toLocaleString('id-ID') : '';
+}
+
+
+// ─────────────────────────────────────────────
+// LOCALSTORAGE
+// ─────────────────────────────────────────────
+
+/** Menyimpan state ke localStorage sebagai JSON */
+function simpanStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+/** Memuat state dari localStorage; jika tidak ada, gunakan default */
+function muatStorage() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try { state = JSON.parse(raw); } catch (e) { /* abaikan data rusak */ }
+  }
+}
+
+
+// ─────────────────────────────────────────────
+// METODE PEMBAGIAN ANGGARAN
+// ─────────────────────────────────────────────
+
+/** Mengganti metode antara '503020' dan 'custom', lalu perbarui UI */
+function setMetode(metode) {
+  state.metode = metode;
+
+  const panel = document.getElementById('panelCustom');
+  const btn503020 = document.getElementById('btn503020');
+  const btnCustom  = document.getElementById('btnCustom');
+
+  if (metode === '503020') {
+    state.persentase = { kebutuhan: 50, keinginan: 30, tabungan: 20 };
+    panel.classList.add('hidden');
+    btn503020.className = 'flex-1 py-2 rounded-xl text-sm font-medium border-2 border-blue-600 bg-blue-600 text-white';
+    btnCustom.className  = 'flex-1 py-2 rounded-xl text-sm font-medium border-2 border-slate-300 text-slate-600 hover:border-blue-400';
+  } else {
+    panel.classList.remove('hidden');
+    btnCustom.className  = 'flex-1 py-2 rounded-xl text-sm font-medium border-2 border-blue-600 bg-blue-600 text-white';
+    btn503020.className = 'flex-1 py-2 rounded-xl text-sm font-medium border-2 border-slate-300 text-slate-600 hover:border-blue-400';
+    // Isi field dengan nilai terakhir
+    document.getElementById('pctKebutuhan').value = state.persentase.kebutuhan || '';
+    document.getElementById('pctKeinginan').value = state.persentase.keinginan || '';
+    document.getElementById('pctTabungan').value  = state.persentase.tabungan  || '';
+  }
+}
+
+/** Validasi real-time persentase kustom, tampilkan pesan jika belum 100% */
+function validatePersentase() {
+  const k = parseFloat(document.getElementById('pctKebutuhan').value) || 0;
+  const i = parseFloat(document.getElementById('pctKeinginan').value) || 0;
+  const t = parseFloat(document.getElementById('pctTabungan').value)  || 0;
+  const total = k + i + t;
+  const err   = document.getElementById('errorPersentase');
+
+  if (total !== 100) {
+    err.textContent = `Total saat ini ${total}%. Harus tepat 100%.`;
+    err.classList.remove('hidden');
+    return false;
+  }
+  err.classList.add('hidden');
+  return true;
+}
+
+
+// ─────────────────────────────────────────────
+// SIMPAN PEMASUKAN & HITUNG ALOKASI
+// ─────────────────────────────────────────────
+
+/** Dipanggil saat tombol "Simpan & Hitung Anggaran" ditekan */
+function simpanPemasukan() {
+  const inputEl = document.getElementById('inputPemasukan');
+  const errEl   = document.getElementById('errorPemasukan');
+  const nilai   = parseBersih(inputEl.value);
+
+  // Validasi pemasukan
+  if (!nilai || nilai <= 0) {
+    errEl.textContent = 'Masukkan pemasukan yang valid (lebih dari 0).';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+
+  // Validasi persentase custom
+  if (state.metode === 'custom') {
+    const valid = validatePersentase();
+    if (!valid) return;
+    state.persentase = {
+      kebutuhan: parseFloat(document.getElementById('pctKebutuhan').value),
+      keinginan: parseFloat(document.getElementById('pctKeinginan').value),
+      tabungan:  parseFloat(document.getElementById('pctTabungan').value),
+    };
+  }
+
+  state.pemasukan = nilai;
+  simpanStorage();
+  renderAlokasi();
+  renderKategori();
+  renderWishlist();   // perbarui status terjangkau saat pemasukan berubah
+  renderRingkasan();
+  renderGrafik();
+}
+
+/** Menampilkan kartu alokasi anggaran (Kebutuhan / Keinginan / Tabungan) */
+function renderAlokasi() {
+  if (!state.pemasukan) return;
+
+  const p = state.persentase;
+  document.getElementById('alokasiKebutuhan').textContent = formatRupiah(state.pemasukan * p.kebutuhan / 100);
+  document.getElementById('alokasiKeinginan').textContent = formatRupiah(state.pemasukan * p.keinginan / 100);
+  document.getElementById('alokasiTabungan').textContent  = formatRupiah(state.pemasukan * p.tabungan  / 100);
+  document.getElementById('pctLabelKebutuhan').textContent = p.kebutuhan + '%';
+  document.getElementById('pctLabelKeinginan').textContent = p.keinginan + '%';
+  document.getElementById('pctLabelTabungan').textContent  = p.tabungan  + '%';
+  document.getElementById('ringkasanAlokasi').classList.remove('hidden');
+}
+
+
+// ─────────────────────────────────────────────
+// KATEGORI PENGELUARAN
+// ─────────────────────────────────────────────
+
+/** Membuka modal dalam mode tambah baru */
+function bukaModalTambah() {
+  editId = null;
+  document.getElementById('judulModal').textContent   = 'Tambah Kategori';
+  document.getElementById('modalNama').value          = '';
+  document.getElementById('modalKelompok').value      = 'kebutuhan';
+  document.getElementById('modalPengeluaran').value   = '';
+  document.getElementById('errorModal').classList.add('hidden');
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+/** Membuka modal dalam mode edit kategori yang ada */
+function bukaModalEdit(id) {
+  const item = state.kategori.find(k => k.id === id);
+  if (!item) return;
+  editId = id;
+  document.getElementById('judulModal').textContent = 'Edit Kategori';
+  document.getElementById('modalNama').value        = item.nama;
+  document.getElementById('modalKelompok').value    = item.kelompok;
+  // Format ulang angka agar ada titik ribuan
+  document.getElementById('modalPengeluaran').value = item.pengeluaran
+    ? parseInt(item.pengeluaran).toLocaleString('id-ID') : '';
+  document.getElementById('errorModal').classList.add('hidden');
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+/** Menutup modal tambah/edit */
+function tutupModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+/** Menyimpan kategori baru atau memperbarui yang diedit */
+function simpanKategori() {
+  const nama        = document.getElementById('modalNama').value.trim();
+  const kelompok    = document.getElementById('modalKelompok').value;
+  const pengeluaran = parseBersih(document.getElementById('modalPengeluaran').value);
+  const errEl       = document.getElementById('errorModal');
+
+  // Validasi input
+  if (!nama) {
+    errEl.textContent = 'Nama kategori tidak boleh kosong.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (pengeluaran < 0) {
+    errEl.textContent = 'Pengeluaran tidak boleh negatif.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+
+  if (editId !== null) {
+    // Mode edit: perbarui item yang ada
+    const idx = state.kategori.findIndex(k => k.id === editId);
+    if (idx !== -1) {
+      state.kategori[idx] = { ...state.kategori[idx], nama, kelompok, pengeluaran };
+    }
+  } else {
+    // Mode tambah: buat ID unik sederhana dari timestamp
+    state.kategori.push({ id: Date.now(), nama, kelompok, pengeluaran });
+  }
+
+  simpanStorage();
+  tutupModal();
+  renderKategori();
+  renderRingkasan();
+  renderGrafik();
+}
+
+/** Menghapus kategori berdasarkan ID */
+function hapusKategori(id) {
+  state.kategori = state.kategori.filter(k => k.id !== id);
+  simpanStorage();
+  renderKategori();
+  renderRingkasan();
+  renderGrafik();
+}
+
+/** Merender daftar kategori ke dalam tabel UI */
+function renderKategori() {
+  const container = document.getElementById('tabelKategori');
+  const infoKosong = document.getElementById('infoKosong');
+  container.innerHTML = '';
+
+  if (state.kategori.length === 0) {
+    infoKosong.classList.remove('hidden');
+    return;
+  }
+  infoKosong.classList.add('hidden');
+
+  // Warna badge per kelompok
+  const warnaBadge = {
+    kebutuhan: 'bg-blue-100 text-blue-700',
+    keinginan: 'bg-purple-100 text-purple-700',
+    tabungan:  'bg-green-100 text-green-700',
+  };
+  const labelKelompok = {
+    kebutuhan: 'Kebutuhan',
+    keinginan: 'Keinginan',
+    tabungan:  'Tabungan',
+  };
+
+  state.kategori.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 gap-2';
+    div.innerHTML = `
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-slate-700 truncate">${escapeHtml(item.nama)}</p>
+        <p class="text-xs text-slate-400 mt-0.5">${formatRupiah(item.pengeluaran)}</p>
+      </div>
+      <span class="text-xs font-medium px-2 py-0.5 rounded-full ${warnaBadge[item.kelompok]} shrink-0">
+        ${labelKelompok[item.kelompok]}
+      </span>
+      <div class="flex gap-1 shrink-0">
+        <button onclick="bukaModalEdit(${item.id})"
+          class="text-xs text-blue-600 hover:underline">✏️</button>
+        <button onclick="hapusKategori(${item.id})"
+          class="text-xs text-red-500 hover:underline ml-1">🗑</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/** Mencegah XSS dengan mengubah karakter berbahaya */
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+// ─────────────────────────────────────────────
+// TARGET KEINGINAN (WISHLIST)
+// ─────────────────────────────────────────────
+
+/**
+ * Hitung sisa jatah kelompok Keinginan + Tabungan setelah pengeluaran kategori.
+ * Nilai ini dipakai sebagai batas kemampuan menabung per bulan.
+ */
+function hitungSisaJatahWishlist() {
+  const p = state.persentase;
+  const alokasiKeinginan = state.pemasukan * p.keinginan / 100;
+  const alokasiTabungan  = state.pemasukan * p.tabungan  / 100;
+  const realKeinginan    = hitungTotalKelompok('keinginan');
+  const realTabungan     = hitungTotalKelompok('tabungan');
+  return Math.max(0, (alokasiKeinginan - realKeinginan) + (alokasiTabungan - realTabungan));
+}
+
+/** Tambah target baru dari form, simpan ke state, lalu render ulang */
+function tambahWishlist() {
+  const nama      = document.getElementById('wNama').value.trim();
+  const harga     = parseBersih(document.getElementById('wHarga').value);
+  const bulan     = parseInt(document.getElementById('wBulan').value, 10);
+  const terkumpul = parseBersih(document.getElementById('wTerkumpul').value);
+  const errEl     = document.getElementById('errorWishlist');
+
+  // Validasi
+  if (!nama) {
+    errEl.textContent = 'Nama barang tidak boleh kosong.';
+    errEl.classList.remove('hidden'); return;
+  }
+  if (!harga || harga <= 0) {
+    errEl.textContent = 'Harga target harus lebih dari 0.';
+    errEl.classList.remove('hidden'); return;
+  }
+  if (!bulan || bulan < 1) {
+    errEl.textContent = 'Jangka waktu minimal 1 bulan.';
+    errEl.classList.remove('hidden'); return;
+  }
+  errEl.classList.add('hidden');
+
+  // Jangan biarkan "sudah terkumpul" melebihi harga
+  const terkumpulFinal = Math.min(terkumpul < 0 ? 0 : terkumpul, harga);
+
+  if (!state.wishlist) state.wishlist = [];
+  state.wishlist.push({
+    id: Date.now(),
+    nama,
+    harga,
+    bulan,
+    terkumpul: terkumpulFinal,
+  });
+
+  // Kosongkan form
+  document.getElementById('wNama').value      = '';
+  document.getElementById('wHarga').value     = '';
+  document.getElementById('wBulan').value     = '';
+  document.getElementById('wTerkumpul').value = '';
+
+  simpanStorage();
+  renderWishlist();
+}
+
+/** Buka modal edit wishlist — isi form dengan data target yang dipilih */
+function editWishlist(id) {
+  const item = state.wishlist.find(w => w.id === id);
+  if (!item) return;
+
+  const namaBaru  = prompt('Nama barang:', item.nama);
+  if (namaBaru === null) return;
+  const hargaBaru = prompt('Harga target (angka tanpa titik):', item.harga);
+  if (hargaBaru === null) return;
+  const bulanBaru = prompt('Jangka waktu (bulan, min 1):', item.bulan);
+  if (bulanBaru === null) return;
+
+  const hargaNum = parseInt(hargaBaru, 10);
+  const bulanNum = parseInt(bulanBaru, 10);
+
+  if (!namaBaru.trim())              { alert('Nama tidak boleh kosong.');          return; }
+  if (isNaN(hargaNum) || hargaNum <= 0) { alert('Harga harus lebih dari 0.');        return; }
+  if (isNaN(bulanNum) || bulanNum < 1)  { alert('Jangka waktu minimal 1 bulan.'); return; }
+
+  item.nama  = namaBaru.trim();
+  item.harga = hargaNum;
+  item.bulan = bulanNum;
+
+  simpanStorage();
+  renderWishlist();
+}
+
+/** Hapus target wishlist setelah konfirmasi */
+function hapusWishlist(id) {
+  if (!confirm('Hapus target ini?')) return;
+  state.wishlist = state.wishlist.filter(w => w.id !== id);
+  simpanStorage();
+  renderWishlist();
+}
+
+/** Buka modal setoran tabungan untuk target tertentu */
+function bukaModalTabungan(id) {
+  const item = state.wishlist.find(w => w.id === id);
+  if (!item) return;
+  activeWishlistId = id;
+  document.getElementById('modalTabunganNama').textContent = `Target: ${escapeHtml(item.nama)}`;
+  document.getElementById('inputSetoran').value = '';
+  document.getElementById('errorSetoran').classList.add('hidden');
+  document.getElementById('modalTabungan').classList.remove('hidden');
+}
+
+/** Tutup modal setoran */
+function tutupModalTabungan() {
+  activeWishlistId = null;
+  document.getElementById('modalTabungan').classList.add('hidden');
+}
+
+/** Simpan setoran ke target aktif, batasi agar tidak melebihi harga */
+function simpanSetoran() {
+  const setoran = parseBersih(document.getElementById('inputSetoran').value);
+  const errEl   = document.getElementById('errorSetoran');
+
+  if (!setoran || setoran <= 0) {
+    errEl.textContent = 'Jumlah setoran harus lebih dari 0.';
+    errEl.classList.remove('hidden'); return;
+  }
+  errEl.classList.add('hidden');
+
+  const item = state.wishlist.find(w => w.id === activeWishlistId);
+  if (item) {
+    item.terkumpul = Math.min(item.terkumpul + setoran, item.harga);
+  }
+
+  tutupModalTabungan();
+  simpanStorage();
+  renderWishlist();
+}
+
+/** Render semua kartu target wishlist */
+function renderWishlist() {
+  // Pastikan array wishlist selalu ada (migrasi dari data lama)
+  if (!state.wishlist) state.wishlist = [];
+
+  const container       = document.getElementById('daftarWishlist');
+  const infoKosong      = document.getElementById('infoWishlistKosong');
+  container.innerHTML   = '';
+
+  if (state.wishlist.length === 0) {
+    infoKosong.classList.remove('hidden');
+    return;
+  }
+  infoKosong.classList.add('hidden');
+
+  // Sisa jatah keinginan+tabungan yang belum terpakai
+  const sisaJatah = hitungSisaJatahWishlist();
+
+  state.wishlist.forEach(item => {
+    const sisaHarga  = Math.max(0, item.harga - item.terkumpul);
+    const perBulan   = item.bulan > 0 ? Math.ceil(sisaHarga / item.bulan) : 0;
+    const persen     = Math.min(100, Math.round((item.terkumpul / item.harga) * 100));
+    const tercapai   = item.terkumpul >= item.harga;
+
+    // Warna progress bar
+    const warnaFill  = tercapai ? 'wb-green' : persen >= 50 ? 'wb-blue' : 'wb-yellow';
+
+    // Status terjangkau
+    let statusHtml = '';
+    if (tercapai) {
+      statusHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">✅ Tercapai!</span>`;
+    } else if (!state.pemasukan) {
+      statusHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Isi pemasukan dulu</span>`;
+    } else if (perBulan <= sisaJatah) {
+      statusHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">✔ Terjangkau</span>`;
+    } else {
+      // Hitung saran jangka waktu minimal yang realistis
+      const saranBulan = sisaJatah > 0 ? Math.ceil(sisaHarga / sisaJatah) : null;
+      const saranTeks  = saranBulan ? `Saran: min. ${saranBulan} bulan` : 'Sisa jatah tidak cukup';
+      statusHtml = `
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">⚠ Melebihi jatah</span>
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 ml-1">${saranTeks}</span>
+      `;
+    }
+
+    const div = document.createElement('div');
+    div.className = `wishlist-kartu${tercapai ? ' tercapai' : ''}`;
+    div.innerHTML = `
+      <div class="flex items-start justify-between gap-2 flex-wrap mb-2">
+        <div>
+          <p class="text-sm font-semibold text-slate-800">${escapeHtml(item.nama)}${tercapai ? ' 🎉' : ''}</p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Target: ${formatRupiah(item.harga)} &bull; ${item.bulan} bulan
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-1 items-center">${statusHtml}</div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="mb-2">
+        <div class="flex justify-between text-xs text-slate-400 mb-1">
+          <span>Terkumpul: ${formatRupiah(item.terkumpul)}</span>
+          <span>${persen}%</span>
+        </div>
+        <div class="w-full bg-slate-200 rounded-full h-2.5">
+          <div class="wb-fill ${warnaFill}" style="width:${persen}%"></div>
+        </div>
+      </div>
+
+      <!-- Info menabung per bulan -->
+      ${!tercapai ? `
+      <p class="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 mb-3">
+        Perlu menabung <strong>${formatRupiah(perBulan)}/bulan</strong>
+        &bull; Sisa jatah: <strong>${formatRupiah(sisaJatah)}</strong>
+      </p>` : ''}
+
+      <!-- Tombol aksi -->
+      <div class="flex gap-2 flex-wrap">
+        ${!tercapai
+          ? `<button onclick="bukaModalTabungan(${item.id})"
+               class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg">
+               + Tambah Tabungan
+             </button>`
+          : ''}
+        <button onclick="editWishlist(${item.id})"
+          class="text-xs border border-slate-300 hover:bg-slate-100 text-slate-600 font-medium px-3 py-1.5 rounded-lg">
+          ✏️ Edit
+        </button>
+        <button onclick="hapusWishlist(${item.id})"
+          class="text-xs border border-red-200 hover:bg-red-50 text-red-500 font-medium px-3 py-1.5 rounded-lg">
+          🗑 Hapus
+        </button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+
+// ─────────────────────────────────────────────
+// RINGKASAN & SISA UANG
+// ─────────────────────────────────────────────
+
+/** Menghitung sisa hari dalam bulan ini dari tanggal hari ini */
+function hitungHariTersisa() {
+  const sekarang = new Date();
+  const akhirBulan = new Date(sekarang.getFullYear(), sekarang.getMonth() + 1, 0);
+  return akhirBulan.getDate() - sekarang.getDate() + 1; // inklusif hari ini
+}
+
+/** Merender ringkasan: sisa uang, perkiraan/hari, dan perbandingan per kelompok */
+function renderRingkasan() {
+  if (!state.pemasukan || state.kategori.length === 0) {
+    document.getElementById('seksiRingkasan').classList.add('hidden');
+    document.getElementById('seksiGrafik').classList.add('hidden');
+    return;
+  }
+  document.getElementById('seksiRingkasan').classList.remove('hidden');
+  document.getElementById('seksiGrafik').classList.remove('hidden');
+
+  const p = state.persentase;
+
+  // Hitung total pengeluaran nyata per kelompok
+  const realKebutuhan = hitungTotalKelompok('kebutuhan');
+  const realKeinginan = hitungTotalKelompok('keinginan');
+  const realTabungan  = hitungTotalKelompok('tabungan');
+  const totalReal     = realKebutuhan + realKeinginan + realTabungan;
+
+  // Sisa uang dan perkiraan per hari
+  const sisa        = state.pemasukan - totalReal;
+  const hariTersisa = hitungHariTersisa();
+  const sisuPerHari = hariTersisa > 0 ? sisa / hariTersisa : 0;
+
+  document.getElementById('sisaUang').textContent   = formatRupiah(sisa);
+  document.getElementById('sisaUang').className     = `text-lg font-bold ${sisa >= 0 ? 'text-blue-700' : 'text-red-600'}`;
+  document.getElementById('sisaPerHari').textContent = formatRupiah(Math.max(sisuPerHari, 0));
+  document.getElementById('infoHariTersisa').textContent = `${hariTersisa} hari tersisa`;
+
+  // Kartu perbandingan per kelompok
+  const kelompokData = [
+    { label: 'Kebutuhan', alokasi: state.pemasukan * p.kebutuhan / 100, real: realKebutuhan, warna: 'blue' },
+    { label: 'Keinginan', alokasi: state.pemasukan * p.keinginan / 100, real: realKeinginan, warna: 'purple' },
+    { label: 'Tabungan',  alokasi: state.pemasukan * p.tabungan  / 100, real: realTabungan,  warna: 'green' },
+  ];
+
+  const container = document.getElementById('kartuPerbandingan');
+  container.innerHTML = '';
+
+  kelompokData.forEach(k => {
+    const rasio   = k.alokasi > 0 ? k.real / k.alokasi : 0;
+    const persen  = Math.round(rasio * 100);
+    // Indikator warna berdasarkan rasio pemakaian
+    const warnaBar = rasio < 0.8 ? 'bg-green-500' : rasio <= 1.0 ? 'bg-yellow-400' : 'bg-red-500';
+    const warnaLabel = rasio < 0.8 ? 'text-green-600' : rasio <= 1.0 ? 'text-yellow-600' : 'text-red-600';
+
+    const div = document.createElement('div');
+    div.className = 'bg-slate-50 rounded-xl p-4';
+    div.innerHTML = `
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm font-medium text-slate-700">${k.label}</span>
+        <span class="text-xs font-bold ${warnaLabel}">${persen}%</span>
+      </div>
+      <div class="flex justify-between text-xs text-slate-400 mb-1.5">
+        <span>Terpakai: ${formatRupiah(k.real)}</span>
+        <span>Alokasi: ${formatRupiah(k.alokasi)}</span>
+      </div>
+      <!-- Progress bar -->
+      <div class="w-full bg-slate-200 rounded-full h-2">
+        <div class="${warnaBar} h-2 rounded-full" style="width:${Math.min(persen, 100)}%"></div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/** Menjumlahkan pengeluaran semua kategori dalam satu kelompok */
+function hitungTotalKelompok(kelompok) {
+  return state.kategori
+    .filter(k => k.kelompok === kelompok)
+    .reduce((acc, k) => acc + (k.pengeluaran || 0), 0);
+}
+
+
+// ─────────────────────────────────────────────
+// GRAFIK (Chart.js)
+// ─────────────────────────────────────────────
+
+/** Membuat atau memperbarui grafik pie dan bar */
+function renderGrafik() {
+  if (!state.pemasukan) return;
+
+  const p = state.persentase;
+  const alokasiKebutuhan = state.pemasukan * p.kebutuhan / 100;
+  const alokasiKeinginan = state.pemasukan * p.keinginan / 100;
+  const alokasiTabungan  = state.pemasukan * p.tabungan  / 100;
+
+  const realKebutuhan = hitungTotalKelompok('kebutuhan');
+  const realKeinginan = hitungTotalKelompok('keinginan');
+  const realTabungan  = hitungTotalKelompok('tabungan');
+
+  // ── Grafik Pie: Pembagian Anggaran ──
+  const ctxPie = document.getElementById('grafikPie').getContext('2d');
+  if (chartPie) chartPie.destroy(); // Hapus instance lama agar tidak overlap
+  chartPie = new Chart(ctxPie, {
+    type: 'doughnut',
+    data: {
+      labels: ['Kebutuhan', 'Keinginan', 'Tabungan'],
+      datasets: [{
+        data: [alokasiKebutuhan, alokasiKeinginan, alokasiTabungan],
+        backgroundColor: ['#3b82f6', '#a855f7', '#22c55e'],
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${formatRupiah(ctx.raw)}`
+          }
+        }
+      }
+    }
+  });
+
+  // ── Grafik Bar: Rencana vs Realisasi ──
+  const ctxBar = document.getElementById('grafikBar').getContext('2d');
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: ['Kebutuhan', 'Keinginan', 'Tabungan'],
+      datasets: [
+        {
+          label: 'Rencana',
+          data: [alokasiKebutuhan, alokasiKeinginan, alokasiTabungan],
+          backgroundColor: 'rgba(59,130,246,0.6)',
+          borderColor: '#3b82f6',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: 'Realisasi',
+          data: [realKebutuhan, realKeinginan, realTabungan],
+          backgroundColor: 'rgba(239,68,68,0.6)',
+          borderColor: '#ef4444',
+          borderWidth: 1,
+          borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${formatRupiah(ctx.raw)}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: val => 'Rp ' + (val / 1000000).toFixed(1) + 'jt',
+            font: { size: 10 }
+          }
+        },
+        x: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+
+// ─────────────────────────────────────────────
+// RESET DATA
+// ─────────────────────────────────────────────
+
+/** Menampilkan modal konfirmasi reset */
+function handleReset() {
+  document.getElementById('modalReset').classList.remove('hidden');
+}
+
+/** Menutup modal reset tanpa aksi */
+function tutupModalReset() {
+  document.getElementById('modalReset').classList.add('hidden');
+}
+
+/** Menghapus semua data dan memuat ulang UI ke kondisi awal */
+function konfirmasiReset() {
+  localStorage.removeItem(STORAGE_KEY);
+  state = {
+    pemasukan: 0,
+    metode: '503020',
+    persentase: { kebutuhan: 50, keinginan: 30, tabungan: 20 },
+    kategori: [],
+    wishlist: []
+  };
+  tutupModalReset();
+
+  // Reset semua input ke nilai kosong
+  document.getElementById('inputPemasukan').value = '';
+  document.getElementById('pctKebutuhan').value   = '';
+  document.getElementById('pctKeinginan').value   = '';
+  document.getElementById('pctTabungan').value    = '';
+
+  // Sembunyikan elemen kondisional
+  document.getElementById('ringkasanAlokasi').classList.add('hidden');
+  document.getElementById('seksiRingkasan').classList.add('hidden');
+  document.getElementById('seksiGrafik').classList.add('hidden');
+
+  setMetode('503020');
+  renderKategori();
+  renderWishlist();
+
+  // Hancurkan instance grafik
+  if (chartPie) { chartPie.destroy(); chartPie = null; }
+  if (chartBar) { chartBar.destroy(); chartBar = null; }
+}
+
+
+// ─────────────────────────────────────────────
+// INISIALISASI SAAT HALAMAN DIMUAT
+// ─────────────────────────────────────────────
+
+/** Memuat ulang semua UI dari state yang disimpan */
+function inisialisasi() {
+  muatStorage();
+
+  // Tampilkan pemasukan tersimpan
+  if (state.pemasukan > 0) {
+    document.getElementById('inputPemasukan').value =
+      state.pemasukan.toLocaleString('id-ID');
+  }
+
+  // Terapkan metode tersimpan
+  setMetode(state.metode);
+
+  // Render semua bagian
+  renderAlokasi();
+  renderKategori();
+  renderWishlist();
+  renderRingkasan();
+  renderGrafik();
+}
+
+// Jalankan inisialisasi ketika DOM siap
+document.addEventListener('DOMContentLoaded', inisialisasi);
+</script>
+
+</body>
+</html>

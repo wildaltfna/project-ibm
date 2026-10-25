@@ -1,0 +1,294 @@
+/* ================================================
+   Smart Budget Planner — Custom Styles (Pure CSS)
+   Catatan: Tailwind CDN (Play CDN) tidak mendukung
+   @apply di file CSS eksternal. Semua gaya komponen
+   ditulis dengan CSS murni di sini.
+   ================================================ */
+
+/* ----- Base ----- */
+body {
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+/* ----- Card (section wrapper) ----- */
+.card {
+  background: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  border: 1px solid #e5e7eb;
+  padding: 1.25rem;
+}
+
+/* ----- Section title ----- */
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* ----- Form elements ----- */
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 0.25rem;
+}
+
+.form-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: #ffffff;
+  color: #1f2937;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+}
+
+/* ----- Buttons ----- */
+.btn-primary {
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.btn-primary:hover { background-color: #1d4ed8; }
+
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.btn-secondary:hover { background-color: #e5e7eb; }
+
+.btn-danger {
+  background-color: #ef4444;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.btn-danger:hover { background-color: #dc2626; }
+
+.btn-sm {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+/* ----- Radio label ----- */
+.radio-label {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.radio-label:hover {
+  border-color: #60a5fa;
+  background-color: #eff6ff;
+}
+
+/* ----- Error message ----- */
+.error-msg {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* ----- Budget result cards ----- */
+.anggaran-card {
+  border-radius: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid;
+}
+
+.anggaran-card .label { font-weight: 600; font-size: 0.875rem; }
+.anggaran-card .value { font-weight: 700; font-size: 1.25rem; margin-top: 0.25rem; }
+
+.anggaran-card.kebutuhan { background: #eff6ff; border-color: #bfdbfe; }
+.anggaran-card.kebutuhan .label { color: #2563eb; }
+.anggaran-card.kebutuhan .value { color: #1e40af; }
+
+.anggaran-card.keinginan { background: #faf5ff; border-color: #e9d5ff; }
+.anggaran-card.keinginan .label { color: #9333ea; }
+.anggaran-card.keinginan .value { color: #6b21a8; }
+
+.anggaran-card.tabungan { background: #f0fdf4; border-color: #bbf7d0; }
+.anggaran-card.tabungan .label { color: #16a34a; }
+.anggaran-card.tabungan .value { color: #15803d; }
+
+/* ----- Kelompok group header ----- */
+.kelompok-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.kelompok-header.kebutuhan { background: #dbeafe; color: #1e40af; }
+.kelompok-header.keinginan { background: #f3e8ff; color: #6b21a8; }
+.kelompok-header.tabungan  { background: #dcfce7; color: #15803d; }
+
+/* ----- Kategori item row ----- */
+.kategori-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+.kategori-item:last-child {
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+/* ----- Progress bar ----- */
+.progress-bar-bg {
+  width: 100%;
+  height: 0.6rem;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+.progress-fill-green  { background-color: #22c55e; }
+.progress-fill-yellow { background-color: #eab308; }
+.progress-fill-red    { background-color: #ef4444; }
+
+/* ----- Indicator dot ----- */
+.dot {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  margin-right: 0.375rem;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.dot-green  { background-color: #22c55e; }
+.dot-yellow { background-color: #eab308; }
+.dot-red    { background-color: #ef4444; }
+.dot-gray   { background-color: #9ca3af; }
+
+/* ----- Wishlist card ----- */
+.wishlist-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.wishlist-card.tercapai {
+  border-color: #86efac;
+  background-color: #f0fdf4;
+}
+
+/* ----- Info card (ringkasan) ----- */
+.info-card {
+  border-radius: 0.75rem;
+  padding: 1rem;
+  border: 1px solid;
+}
+
+/* ----- Chart container ----- */
+.chart-container {
+  position: relative;
+  width: 100%;
+  max-height: 280px;
+}
+
+/* ----- Modal overlay ----- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal-box {
+  background: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 24rem;
+  margin: 0 1rem;
+}
+
+/* ----- Badge status ----- */
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  display: inline-block;
+}
+.badge-green  { background: #dcfce7; color: #15803d; }
+.badge-yellow { background: #fef9c3; color: #a16207; }
+.badge-red    { background: #fee2e2; color: #dc2626; }
+.badge-blue   { background: #dbeafe; color: #1d4ed8; }
+.badge-gray   { background: #f3f4f6; color: #4b5563; }
+
+/* ----- Responsive tweaks ----- */
+@media (max-width: 480px) {
+  .card { padding: 1rem; }
+  .modal-box { padding: 1.25rem; }
+  .section-title { font-size: 1rem; }
+  .kelompok-header { font-size: 0.8rem; }
+}
+
+/* ----- Utility: hidden ----- */
+.hidden { display: none !important; }
